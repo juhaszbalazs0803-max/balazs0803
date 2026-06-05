@@ -59,11 +59,11 @@ def save_state(state):
 
 def send_email(new, notifier, cfg):
     new.sort(key=lambda x: -x[2]["value_pct"])
-    lines = [f"{len(new)} új biztos value tipp a vegas.hu-n:\n"]
-    for _, v, b in new:
-        lines.append(notify_cron.format_bet(cfg, v, b))
+    items = [(v, b) for _, v, b in new]
+    text, html = notify_cron.build_email(
+        cfg, items, f"{len(new)} új biztos value tipp a vegas.hu-n:")
     notifier.send(f"🟢 {len(new)} új value tipp – legjobb +{new[0][2]['value_pct']}%",
-                  "\n".join(lines))
+                  text, html)
 
 
 def main():

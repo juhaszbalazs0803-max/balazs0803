@@ -15,7 +15,7 @@ from valuebet.http import Http
 from valuebet.vegas import VegasClient, SPORT_NAMES
 from valuebet.pinnacle import PinnacleClient, SPORT_MAP
 from valuebet.notify import EmailNotifier
-from valuebet import matching, compute
+from valuebet import matching, compute, bettoken
 from valuebet import value as V
 
 STATE_FILE = "notified.json"
@@ -43,17 +43,88 @@ def stake_for(cfg, fair_p, odds):
     return st, pct
 
 
-def format_bet(cfg, v, b):
-    """Egy value bet email-sora, a javasolt téttel és a tőke %-ával."""
+def _to_email(cfg):
+    n = cfg.get("notify", {})
+    return n.get("to_email") or n.get("smtp_user") or ""
+
+
+def bet_dict(cfg, v, b):
+    """A tipp egységes adat-dictje (emailhez + a 'Megraktam' tokenhez)."""
     st, pct = stake_for(cfg, b["fair_p"], b["odds"])
-    stake_str = f"{st:,}".replace(",", " ")  # ezres tagolás szóközzel
+    key = b.get("key") or f"{v.sport_id}:{getattr(v, 'id', '')}:{b.get('subkey', '')}"
+    start = v.start.isoformat() if getattr(v, "start", None) else b.get("start")
+    return {
+        "key": key,
+        "sport": SPORT_NAMES.get(v.sport_id, ""),
+        "event": f"{v.home} - {v.away}",
+        "market": b.get("market", ""),
+        "market_name": b["market_name"],
+        "tip": b["tip"],
+        "odds": round(float(b["odds"]), 3),
+        "stake": int(st),
+        "stake_pct": round(pct, 1),
+        "value_pct": b["value_pct"],
+        "fair_pct": b.get("fair_pct", round(b["fair_p"] * 100, 1)),
+        "start": start,
+        "limit": b.get("limit", 0),
+        "pinn_url": b.get("pinn_url", ""),
+    }
+
+
+def format_bet(cfg, v, b):
+    """Egy value bet email-sora, a javasolt téttel és a 'Megraktam' linkkel."""
+    d = bet_dict(cfg, v, b)
+    to = _to_email(cfg)
+    stake_str = f"{d['stake']:,}".replace(",", " ")  # ezres tagolás szóközzel
     return (
-        f"• {SPORT_NAMES.get(v.sport_id, '')} | {v.home} - {v.away}\n"
-        f"  {b['market_name']} – {b['tip']}\n"
-        f"  Vegas odds {b['odds']:.2f} | value +{b['value_pct']}%"
-        f" | Pinnacle limit ${b.get('limit', 0)}\n"
-        f"  💰 Javasolt tét: {stake_str} Ft  (a tőke {pct:.1f}%-a)\n"
-        f"  Ellenőrzés: {b.get('pinn_url', '')}\n")
+        f"• {d['sport']} | {d['event']}\n"
+        f"  {d['market_name']} – {d['tip']}\n"
+        f"  Vegas odds {d['odds']:.2f} | value +{d['value_pct']}%"
+        f" | Pinnacle limit ${d['limit']}\n"
+        f"  💰 Javasolt tét: {stake_str} Ft  (a tőke {d['stake_pct']}%-a)\n"
+        f"  Ellenőrzés: {d['pinn_url']}\n"
+        f"  ✅ MEGRAKTAM:  {bettoken.placed_mailto(to, d)}\n"
+        f"  ❌ Kihagytam:  {bettoken.skip_mailto(to, d)}\n")
+
+
+def format_bet_html(cfg, v, b):
+    """Egy tipp HTML-kártyája kattintható 'Megraktam / Kihagytam' gombokkal."""
+    d = bet_dict(cfg, v, b)
+    to = _to_email(cfg)
+    stake_str = f"{d['stake']:,}".replace(",", " ")
+    placed = bettoken.placed_mailto(to, d)
+    skip = bettoken.skip_mailto(to, d)
+    pinn = (f'<a href="{d["pinn_url"]}" style="color:#888">Pinnacle ellenőrzés</a>'
+            if d["pinn_url"] else "")
+    return f"""
+    <div style="border:1px solid #e0e0e0;border-radius:10px;padding:12px 14px;margin:12px 0;font-family:Arial,Helvetica,sans-serif">
+      <div style="font-size:12px;color:#888">{d['sport']}</div>
+      <div style="font-size:16px;font-weight:bold;color:#111">{d['event']}</div>
+      <div style="margin:4px 0;color:#222">{d['market_name']} – <b>{d['tip']}</b></div>
+      <div style="font-size:14px;color:#222">Vegas odds <b>{d['odds']:.2f}</b> &middot; value <b style="color:#16a34a">+{d['value_pct']}%</b> &middot; limit ${d['limit']}</div>
+      <div style="margin:4px 0;font-size:14px;color:#222">&#128176; Javasolt tét: <b>{stake_str} Ft</b> (a tőke {d['stake_pct']}%-a)</div>
+      <div style="margin:12px 0 4px">
+        <a href="{placed}" style="display:inline-block;background:#16a34a;color:#fff;text-decoration:none;padding:11px 18px;border-radius:8px;font-weight:bold">&#9989; Megraktam</a>
+        &nbsp;&nbsp;
+        <a href="{skip}" style="display:inline-block;background:#eceff1;color:#111;text-decoration:none;padding:11px 18px;border-radius:8px">&#10060; Kihagytam</a>
+      </div>
+      <div style="font-size:12px;margin-top:6px">{pinn}</div>
+    </div>"""
+
+
+def build_email(cfg, items, intro):
+    """(text, html) páros a tippekből. items: (v, b) lista."""
+    text = [intro] + [format_bet(cfg, v, b) for v, b in items]
+    html_cards = "".join(format_bet_html(cfg, v, b) for v, b in items)
+    html = (
+        '<div style="max-width:580px;margin:0 auto">'
+        f'<p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#111">{intro}</p>'
+        f'{html_cards}'
+        '<p style="font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#888">'
+        'A &#9989; Megraktam gomb egy válasz-emailt nyit egy kóddal – csak küldd el. '
+        'A figyelő ebből jegyzi meg a fogadást és követi az eredményt.</p>'
+        '</div>')
+    return "\n".join(text), html
 
 
 def scan(cfg):
@@ -140,11 +211,10 @@ def main():
         return
 
     new.sort(key=lambda x: -x[2]["value_pct"])
-    lines = [f"{len(new)} új biztos value tipp a vegas.hu-n:\n"]
-    for _, v, b in new:
-        lines.append(format_bet(cfg, v, b))
+    items = [(v, b) for _, v, b in new]
+    text, html = build_email(cfg, items, f"{len(new)} új biztos value tipp a vegas.hu-n:")
     notifier.send(f"🟢 {len(new)} új value tipp – legjobb +{new[0][2]['value_pct']}%",
-                  "\n".join(lines))
+                  text, html)
     print(f"Elküldve: {len(new)} új tipp.")
 
 

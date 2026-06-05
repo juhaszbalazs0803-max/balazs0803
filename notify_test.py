@@ -15,14 +15,18 @@ import notify_cron
 
 def sample_bet():
     """Egy realisztikus PÉLDA value bet a formátum bemutatásához."""
-    v = SimpleNamespace(sport_id=66, home="Példa Hazai FC", away="Példa Vendég SC")
+    v = SimpleNamespace(sport_id=66, id=999001, start=None,
+                        home="Példa Hazai FC", away="Példa Vendég SC")
     odds = 2.10
     fair_p = 0.50                       # ~5% value ezen az odds-on
     b = {
+        "market": "ml",
+        "subkey": "ml:home",
         "market_name": "Meccsgyőztes",
         "tip": "1 — Példa Hazai FC",
         "odds": odds,
         "fair_p": fair_p,
+        "fair_pct": round(fair_p * 100, 1),
         "value_pct": round((fair_p * odds - 1) * 100, 2),
         "limit": 1500,
         "pinn_url": "https://www.pinnacle.com/",
@@ -51,24 +55,19 @@ def main():
 
     if found:
         found.sort(key=lambda x: -x[2]["value_pct"])
-        top = found[:3]
-        lines = ["✅ PRÓBA EMAIL – a figyelő működik.\n",
-                 f"Most {len(found)} biztos value tipp van; itt a legjobb {len(top)}:\n"]
-        for _, v, b in top:
-            lines.append(notify_cron.format_bet(cfg, v, b))
+        items = [(v, b) for _, v, b in found[:3]]
+        intro = (f"✅ PRÓBA EMAIL – a figyelő működik. Most {len(found)} biztos value "
+                 f"tipp van; itt a legjobb {len(items)}. Próbáld ki a 'Megraktam' gombot!")
         subject = f"✅ Próba email – működik ({len(found)} élő tipp)"
     else:
-        v, b = sample_bet()
-        lines = ["✅ PRÓBA EMAIL – a figyelő működik.\n",
-                 "Most épp nincs élő biztos value tipp, ezért egy PÉLDA tippet "
-                 "mutatok, hogy lásd, hogyan néz majd ki egy igazi értesítés:\n",
-                 notify_cron.format_bet(cfg, v, b),
-                 "(A fenti csak példa – ne fogadj rá!)\n"]
+        items = [sample_bet()]
+        intro = ("✅ PRÓBA EMAIL – a figyelő működik. Most épp nincs élő biztos value "
+                 "tipp, ezért egy PÉLDA tippet mutatok – próbáld ki rajta a 'Megraktam' "
+                 "gombot! (Erre a példára ne fogadj.)")
         subject = "✅ Próba email – működik (példa tipp)"
 
-    lines.append("\nA javasolt tét a beállított tőkéből (bankroll) számolt negyed-Kelly,\n"
-                 "100 Ft-ra kerekítve, és melléírva a tőke hány %-a.")
-    notifier.send(subject, "\n".join(lines))
+    text, html = notify_cron.build_email(cfg, items, intro)
+    notifier.send(subject, text, html)
     print(f"Próba email elküldve: {subject}")
 
 

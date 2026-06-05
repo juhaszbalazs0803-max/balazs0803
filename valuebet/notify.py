@@ -6,6 +6,7 @@ Ezt írd a config.json -> notify.smtp_password mezőbe (NEM a normál jelszavad)
 import smtplib
 import ssl
 import threading
+from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.utils import formataddr
 
@@ -32,10 +33,15 @@ class EmailNotifier:
             ctx.verify_mode = ssl.CERT_NONE
         return ctx
 
-    def send(self, subject, body):
+    def send(self, subject, body, html=None):
         if not self.configured():
             raise RuntimeError("Email nincs beállítva (notify.smtp_user / smtp_password / to_email).")
-        msg = MIMEText(body, "plain", "utf-8")
+        if html:
+            msg = MIMEMultipart("alternative")
+            msg.attach(MIMEText(body, "plain", "utf-8"))
+            msg.attach(MIMEText(html, "html", "utf-8"))
+        else:
+            msg = MIMEText(body, "plain", "utf-8")
         msg["Subject"] = subject
         msg["From"] = formataddr(("Value Bet", self.from_))
         msg["To"] = self.to
@@ -45,12 +51,12 @@ class EmailNotifier:
             s.login(self.user, self.password)
             s.sendmail(self.from_, [self.to], msg.as_string())
 
-    def send_async(self, subject, body):
-        threading.Thread(target=self._safe, args=(subject, body), daemon=True).start()
+    def send_async(self, subject, body, html=None):
+        threading.Thread(target=self._safe, args=(subject, body, html), daemon=True).start()
 
-    def _safe(self, subject, body):
+    def _safe(self, subject, body, html=None):
         try:
-            self.send(subject, body)
+            self.send(subject, body, html)
             print(f"[email] elküldve: {subject}")
         except Exception as e:
             print(f"[email] HIBA: {e}")
