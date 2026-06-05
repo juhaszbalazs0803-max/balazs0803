@@ -1,0 +1,24 @@
+name: Value Bet próba email
+
+# Kézzel indítható: küld egy próba-emailt (a figyelő tényleg tud-e emailt küldeni).
+on:
+  workflow_dispatch: {}
+
+jobs:
+  test-email:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install requests
+
+      - name: Próba email küldése
+        env:
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          TO_EMAIL: ${{ secrets.TO_EMAIL }}
+        run: python notify_test.py

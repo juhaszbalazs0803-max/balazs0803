@@ -1,0 +1,49 @@
+name: Value Bet figyelő (gyors)
+
+# Folyamatos, közel azonnali figyelő a GitHub felhőjében – a laptop KIKAPCSOLVA is megy.
+# Minden óra elején indul egy ~55 perces figyelő-loop, ami ~90 mp-enként keres és
+# AZONNAL emailt küld az ÚJ biztos value betekről. PUBLIKUS repónál ingyenes/korlátlan.
+on:
+  schedule:
+    - cron: "0 * * * *"        # óránként újraindul (a loop tölti ki az órát)
+  workflow_dispatch: {}        # kézi indítás is
+
+permissions:
+  contents: write              # a notified.json visszaírásához
+
+# Egyszerre csak egy figyelő fusson; a következő ütemezett futás megvárja az előzőt.
+concurrency:
+  group: value-watch
+  cancel-in-progress: false
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 59
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install requests
+
+      - name: Figyelő loop (email azonnal új tippnél)
+        env:
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          TO_EMAIL: ${{ secrets.TO_EMAIL }}
+          POLL_SEC: "60"            # ~60 mp-enként néz; ez alá ne (vegas/Pinnacle terhelés)
+          MAX_RUNTIME_SEC: "3300"   # 55 perc, majd átadja a következő órás futásnak
+        run: python notify_watch.py
+
+      - name: Állapot mentése (notified.json)
+        if: always()
+        run: |
+          git config user.name "value-bet-bot"
+          git config user.email "value-bet-bot@users.noreply.github.com"
+          git add notified.json || true
+          git commit -m "update notified state [skip ci]" || echo "nincs változás"
+          git pull --rebase --autostash || true
+          git push || echo "push kihagyva"

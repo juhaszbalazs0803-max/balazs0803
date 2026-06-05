@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Value Bet — vegas.hu vs Pinnacle</title>
+<style>
+  :root { --bg:#0f1216; --panel:#171c23; --line:#262d38; --txt:#e6edf3; --mut:#8b97a7;
+          --green:#2ea043; --red:#d2493f; --accent:#3b82f6; --gold:#e3b341; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--txt); font:14px/1.4 system-ui,Segoe UI,Arial; }
+  header { padding:12px 18px; border-bottom:1px solid var(--line); display:flex; gap:18px;
+           align-items:center; flex-wrap:wrap; background:var(--panel); position:sticky; top:0; z-index:5; }
+  h1 { font-size:16px; margin:0; font-weight:600; }
+  h2 { font-size:14px; margin:18px 0 8px; color:var(--mut); text-transform:uppercase; letter-spacing:.05em; }
+  .meta { color:var(--mut); font-size:12px; display:flex; gap:14px; flex-wrap:wrap; }
+  .dot { display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--green); margin-right:6px; }
+  .dot.bad { background:var(--red); }
+  .wrap { padding:18px; max-width:1300px; margin:0 auto; }
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:14px 16px; }
+  .filters { display:flex; gap:20px; flex-wrap:wrap; align-items:flex-end; margin-bottom:16px; }
+  .f { display:flex; flex-direction:column; gap:4px; }
+  .f label { font-size:11px; color:var(--mut); text-transform:uppercase; letter-spacing:.04em; }
+  .f input[type=number] { width:96px; background:var(--bg); border:1px solid var(--line);
+             color:var(--txt); border-radius:6px; padding:6px 8px; font-size:14px; }
+  .chk { display:flex; gap:12px; flex-wrap:wrap; }
+  .chk label { font-size:13px; display:flex; gap:5px; align-items:center; }
+  table { width:100%; border-collapse:collapse; }
+  th, td { padding:8px 10px; text-align:left; border-bottom:1px solid var(--line); white-space:nowrap; }
+  th { font-size:11px; color:var(--mut); text-transform:uppercase; letter-spacing:.04em; }
+  td.num, th.num { text-align:right; font-variant-numeric:tabular-nums; }
+  tr.expired { opacity:.5; }
+  .badge { padding:2px 8px; border-radius:20px; font-size:11px; font-weight:600; }
+  .badge.live { background:#0f2417; color:#5fd97a; border:1px solid #1f5130; }
+  .badge.exp  { background:#2a1413; color:#f08a80; border:1px solid #5a201c; }
+  .tag { font-size:10px; color:var(--mut); border:1px solid var(--line); border-radius:4px; padding:1px 5px; }
+  a { color:#9cc4ff; text-decoration:none; border-bottom:1px dotted #4a6fa5; }
+  a:hover { color:#cfe2ff; }
+  .val { font-weight:700; color:#5fd97a; }
+  .tip { font-weight:600; }
+  .stake { color:var(--gold); font-weight:600; }
+  small.lg { color:var(--mut); display:block; font-size:11px; }
+  button { cursor:pointer; border:1px solid var(--line); background:var(--bg); color:var(--txt);
+           border-radius:6px; padding:4px 9px; font-size:12px; }
+  button:hover { border-color:var(--accent); }
+  button.place { background:#10233f; border-color:#1d3a66; color:#9cc4ff; }
+  button.won { color:#5fd97a; } button.lost { color:#f08a80; }
+  .empty { text-align:center; color:var(--mut); padding:30px; }
+  .stats { display:flex; gap:26px; flex-wrap:wrap; align-items:center; }
+  .stat b { font-size:20px; display:block; }
+  .stat span { color:var(--mut); font-size:11px; text-transform:uppercase; }
+  .pos { color:#5fd97a; } .neg { color:#f08a80; }
+  canvas { width:100%; height:180px; display:block; }
+  .grid2 { display:grid; grid-template-columns: 1fr 1.1fr; gap:16px; align-items:stretch; }
+  @media (max-width:900px){ .grid2 { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>⚡ Value Bet — <span style="color:var(--mut);font-weight:400">vegas.hu vs Pinnacle</span></h1>
+  <button id="refreshBtn" onclick="refreshNow()" title="Azonnali frissítés">🔄 Frissítés most</button>
+  <div class="meta" id="meta"></div>
+</header>
+
+<div class="wrap">
+  <div class="panel filters">
+    <div class="f"><label>Tőke (Ft)</label><input type="number" id="bankroll" step="1000" min="0"></div>
+    <div class="f"><label>Min. tét (Ft)</label><input type="number" id="min_bet" step="100" min="0"></div>
+    <div class="f"><label>Kelly tört</label><input type="number" id="kelly_fraction" step="0.05" min="0" max="1"></div>
+    <div class="f"><label>Min. value %</label><input type="number" id="min_value_pct" step="0.5" min="0"></div>
+    <div class="f"><label>Min. odds</label><input type="number" id="min_odds" step="0.05" min="1"></div>
+    <div class="f"><label>Max. odds</label><input type="number" id="max_odds" step="0.5" min="1"></div>
+    <div class="f"><label>Sportok</label>
+      <div class="chk" id="sports">
+        <label><input type="checkbox" value="66"> Foci</label>
+        <label><input type="checkbox" value="68"> Tenisz</label>
+        <label><input type="checkbox" value="67"> Kosár</label>
+        <label><input type="checkbox" value="70"> Jégkorong</label>
+      </div>
+    </div>
+    <div class="f"><label>Piacok</label>
+      <div class="chk" id="markets">
+        <label><input type="checkbox" value="ml"> Meccsgyőztes</label>
+        <label><input type="checkbox" value="ou"> Over/Under</label>
+        <label><input type="checkbox" value="ah"> Hendikep</label>
+      </div>
+    </div>
+    <div class="f"><label>Minőség</label>
+      <div class="chk"><label><input type="checkbox" id="only_solid"> 🔒 Csak biztos value</label></div>
+    </div>
+    <div class="f"><label>Értesítés</label>
+      <div class="chk">
+        <label><input type="checkbox" id="notify_enabled"> 📧 Email új tippnél</label>
+        <button type="button" onclick="testEmail()">Teszt email</button>
+      </div>
+    </div>
+    <div class="f"><label>Min. Pinn. limit ($)</label><input type="number" id="solid_min_limit" step="50" min="0"></div>
+    <div class="f"><label>Stabilitás (mp)</label><input type="number" id="solid_min_age" step="3" min="0"></div>
+    <div class="f"><label>Max. óra kezdésig</label><input type="number" id="solid_max_hours" step="6" min="0"></div>
+  </div>
+
+  <div class="grid2">
+    <div class="panel">
+      <h2 style="margin-top:0">Statisztika</h2>
+      <div class="stats" id="stats"></div>
+    </div>
+    <div class="panel">
+      <h2 style="margin-top:0">Egyenleg-görbe</h2>
+      <canvas id="chart"></canvas>
+    </div>
+  </div>
+
+  <h2>Value betek</h2>
+  <div class="panel" style="padding:0">
+    <table>
+      <thead><tr>
+        <th>Státusz</th><th>Sport</th><th>Idő (UTC)</th><th>Meccs</th><th>Piac</th><th>Tipp</th>
+        <th class="num">Vegas</th><th class="num">Pinnacle 🔗</th><th class="num">Vig nélkül</th>
+        <th class="num">Valós</th><th class="num">Value</th><th class="num">Tét (Ft)</th><th></th>
+      </tr></thead>
+      <tbody id="rows"><tr><td colspan="13" class="empty">Betöltés…</td></tr></tbody>
+    </table>
+  </div>
+
+  <h2>Megrakott fogadások</h2>
+  <div class="panel" style="padding:0">
+    <table>
+      <thead><tr>
+        <th>Idő</th><th>Meccs</th><th>Piac / Tipp</th><th class="num">Odds</th>
+        <th class="num">Tét</th><th class="num">Value</th><th>Állapot</th>
+        <th class="num">P/L</th><th></th>
+      </tr></thead>
+      <tbody id="placed"><tr><td colspan="9" class="empty">Még nincs megrakott fogadás.</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+let bets = {};            // key -> bet (a Megrakom gombhoz)
+let settingsLoaded = false, pushTimer = null;
+
+function pushSettings() {
+  const body = {
+    bankroll:+$('bankroll').value, min_bet:+$('min_bet').value,
+    kelly_fraction:+$('kelly_fraction').value, min_value_pct:+$('min_value_pct').value,
+    min_odds:+$('min_odds').value, max_odds:+$('max_odds').value,
+    only_solid: $('only_solid').checked, notify_enabled: $('notify_enabled').checked,
+    solid_min_limit:+$('solid_min_limit').value, solid_min_age:+$('solid_min_age').value,
+    solid_max_hours:+$('solid_max_hours').value,
+    sports:[...document.querySelectorAll('#sports input:checked')].map(c=>+c.value),
+    markets:[...document.querySelectorAll('#markets input:checked')].map(c=>c.value),
+  };
+  fetch('/api/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+}
+const debouncedPush = () => { clearTimeout(pushTimer); pushTimer = setTimeout(pushSettings, 350); };
+
+function applySettings(s){
+  if (settingsLoaded) return;
+  ['bankroll','min_bet','kelly_fraction','min_value_pct','min_odds','max_odds',
+   'solid_min_limit','solid_min_age','solid_max_hours'].forEach(k=>$(k).value=s[k]);
+  $('only_solid').checked = !!s.only_solid;
+  $('notify_enabled').checked = !!s.notify_enabled;
+  document.querySelectorAll('#sports input').forEach(c=>c.checked=s.sports.includes(+c.value));
+  document.querySelectorAll('#markets input').forEach(c=>c.checked=s.markets.includes(c.value));
+  settingsLoaded = true;
+}
+const ft = n => (n==null?'–':Math.round(n).toLocaleString('hu-HU')+' Ft');
+const fmtTime = iso => { if(!iso) return '?'; return new Date(iso).toISOString().slice(5,16).replace('T',' '); };
+
+async function place(key){
+  const b = bets[key]; if(!b) return;
+  const v = prompt(`Tét összege (Ft) — ${b.event} / ${b.tip} @ ${b.odds}:`, b.stake||100);
+  if(v===null) return;
+  await fetch('/api/place',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({sport:b.sport,event:b.event,market_name:b.market_name,tip:b.tip,
+      odds:b.odds,value_pct:b.value_pct,fair_pct:b.fair_pct,start:b.start,stake:+v})});
+  tick();
+}
+async function settle(id,result){ await fetch('/api/settle',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,result})}); tick(); }
+async function del(id){ if(confirm('Törlöd?')){ await fetch('/api/delete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})}); tick(); } }
+
+function renderStats(s){
+  const pl = s.pnl>=0?'pos':'neg', roi = s.roi>=0?'pos':'neg';
+  $('stats').innerHTML = `
+    <div class="stat"><b>${ft(s.pnl).replace(' Ft','')}<span class="${pl}"> Ft</span></b><span>Profit/veszteség</span></div>
+    <div class="stat"><b class="${roi}">${s.roi}%</b><span>ROI</span></div>
+    <div class="stat"><b>${s.hit_rate}%</b><span>Találati arány</span></div>
+    <div class="stat"><b>${s.won}/${s.settled}</b><span>Nyert/lezárt</span></div>
+    <div class="stat"><b>${ft(s.staked)}</b><span>Megtett összesen</span></div>
+    <div class="stat"><b>${ft(s.open_stake)}</b><span>Nyitott tét</span></div>`;
+}
+
+function drawChart(curve){
+  const c = $('chart'), dpr = window.devicePixelRatio||1;
+  const W = c.clientWidth, H = 180; c.width = W*dpr; c.height = H*dpr;
+  const x = c.getContext('2d'); x.scale(dpr,dpr); x.clearRect(0,0,W,H);
+  if(!curve || curve.length<2){ x.fillStyle='#8b97a7'; x.font='12px system-ui';
+    x.fillText('Zárj le fogadásokat (nyert/vesztett) az egyenleg-görbéhez.',12,90); return; }
+  const vals = curve.map(p=>p.balance), mn=Math.min(...vals), mx=Math.max(...vals);
+  const pad=28, span=(mx-mn)||1;
+  const px = i => pad + i*(W-2*pad)/(curve.length-1);
+  const py = v => H-pad - (v-mn)*(H-2*pad)/span;
+  // alapvonal (kezdő tőke)
+  x.strokeStyle='#262d38'; x.beginPath(); x.moveTo(pad,py(vals[0])); x.lineTo(W-pad,py(vals[0])); x.stroke();
+  x.strokeStyle = vals[vals.length-1]>=vals[0] ? '#2ea043' : '#d2493f';
+  x.lineWidth=2; x.beginPath();
+  curve.forEach((p,i)=>{ const X=px(i),Y=py(p.balance); i?x.lineTo(X,Y):x.moveTo(X,Y); }); x.stroke();
+  x.fillStyle='#8b97a7'; x.font='11px system-ui';
+  x.fillText(ft(mx), 2, py(mx)+4); x.fillText(ft(mn), 2, py(mn)+4);
+}
+
+function render(st){
+  applySettings(st.settings);
+  const m = st.meta, ok = m.last_ok && (m.now-m.last_ok)<30, ago = m.last_cycle?Math.round(m.now-m.last_cycle):'–';
+  $('meta').innerHTML =
+    `<span><span class="dot ${ok?'':'bad'}"></span>${ok?'kapcsolódva':'nincs friss adat'}</span>`+
+    `<span>vegas: ${m.vegas_events}</span><span>pinnacle: ${m.pinn_events}</span>`+
+    `<span>párosítva: ${m.matched}</span><span>ciklus: ${m.cycle_ms}ms (${ago}s)</span>`+
+    `<span>value: ${st.bets.length}</span>`+
+    (m.errors&&m.errors.length?`<span style="color:var(--red)">hiba: ${m.errors[0]}</span>`:'');
+
+  renderStats(st.stats); drawChart(st.stats.curve);
+
+  bets = {};
+  $('rows').innerHTML = st.bets.length ? st.bets.map(b=>{
+    bets[b.key]=b; const live=b.status==='ÉLŐ';
+    const hrs = b.hours_to_start!=null ? ` · kezdésig ${b.hours_to_start} óra` : '';
+    const tip2 = `stabil ${b.stable_sec||0} mp · Pinnacle limit ${b.limit?('$'+b.limit):'?'}${hrs}${b.solid?' · 🔒 biztos':''}`;
+    return `<tr class="${live?'':'expired'}">
+      <td><span class="badge ${live?'live':'exp'}" title="${tip2}">${b.status}${b.solid?' 🔒':''}</span></td>
+      <td>${b.sport}</td><td>${fmtTime(b.start)}</td>
+      <td>${b.event}<small class="lg">${b.league||''}</small></td>
+      <td><span class="tag">${b.market_name}</span></td>
+      <td class="tip">${b.solid?'🔒 ':''}${b.tip}</td>
+      <td class="num">${b.odds.toFixed(2)}</td>
+      <td class="num">${b.ref_odds?`<a href="${b.pinn_url}" target="_blank" rel="noopener" title="Nyisd meg a Pinnacle meccset az ellenőrzéshez">${b.ref_odds.toFixed(2)}</a>`:'–'}</td>
+      <td class="num">${b.fair_odds?b.fair_odds.toFixed(2):'–'}</td>
+      <td class="num">${b.fair_pct}%</td>
+      <td class="num val">+${b.value_pct}%</td>
+      <td class="num stake">${b.stake?b.stake.toLocaleString('hu-HU'):'–'}</td>
+      <td><button class="place" onclick="place('${b.key}')">Megrakom</button></td>
+    </tr>`;
+  }).join('') : '<tr><td colspan="13" class="empty">Nincs value bet a szűrőkkel.</td></tr>';
+
+  $('placed').innerHTML = st.placed.length ? st.placed.map(b=>{
+    const profit = b.status==='won'? b.stake*(b.odds-1) : b.status==='lost'? -b.stake : 0;
+    const stCol = b.status==='pending' ? '<span class="tag">nyitott</span>'
+      : b.status==='won' ? '<span class="badge live">NYERT</span>'
+      : b.status==='lost' ? '<span class="badge exp">VESZTETT</span>' : b.status;
+    const actions = b.status==='pending'
+      ? `<button class="won" onclick="settle(${b.id},'won')">Nyert</button>
+         <button class="lost" onclick="settle(${b.id},'lost')">Vesztett</button>`
+      : `<button onclick="settle(${b.id},'pending')">↩</button>`;
+    return `<tr>
+      <td>${new Date(b.ts*1000).toLocaleString('hu-HU').slice(5)}</td>
+      <td>${b.event}</td><td>${b.tip}<small class="lg">${b.market_name}</small></td>
+      <td class="num">${b.odds.toFixed(2)}</td>
+      <td class="num">${b.stake.toLocaleString('hu-HU')}</td>
+      <td class="num">+${b.value_pct}%</td>
+      <td>${stCol}</td>
+      <td class="num ${profit>0?'pos':profit<0?'neg':''}">${profit?ft(profit):'–'}</td>
+      <td>${actions} <button onclick="del(${b.id})">🗑</button></td>
+    </tr>`;
+  }).join('') : '<tr><td colspan="9" class="empty">Még nincs megrakott fogadás.</td></tr>';
+}
+
+async function refreshNow(){
+  const btn=$('refreshBtn'); btn.disabled=true; btn.textContent='⏳ Frissítés…';
+  try{ await fetch('/api/refresh',{method:'POST'}); }catch(e){}
+  // adunk egy kis időt a háttér-ciklusnak, majd többször lekérjük
+  for(let i=0;i<5;i++){ await new Promise(r=>setTimeout(r,700)); await tick(); }
+  btn.disabled=false; btn.textContent='🔄 Frissítés most';
+}
+async function testEmail(){
+  try{
+    const r=await fetch('/api/notify-test',{method:'POST'}); const d=await r.json();
+    alert(d.ok ? '✅ Teszt email elküldve – nézd meg a postaládád.' :
+                 '❌ Hiba: '+(d.error||'ismeretlen')+'\n\nEllenőrizd a config.json notify beállításait (Gmail App jelszó kell).');
+  }catch(e){ alert('Hiba: '+e); }
+}
+async function tick(){ try{ const r=await fetch('/api/state'); render(await r.json()); }catch(e){} }
+document.querySelectorAll('.filters input').forEach(el=>el.addEventListener('input',debouncedPush));
+tick(); setInterval(tick, 2000);
+</script>
+</body>
+</html>

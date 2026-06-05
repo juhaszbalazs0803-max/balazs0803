@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+*.log
+valuebet_data.json
+config.json
