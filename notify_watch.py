@@ -92,9 +92,11 @@ def main():
 
     poll = int(os.environ.get("POLL_SEC", "90"))
     max_runtime = int(os.environ.get("MAX_RUNTIME_SEC", "3300"))
-    # STABILITÁS: csak akkor küldünk egy tippet, ha legalább ennyi EGYMÁST KÖVETŐ
-    # keresésben látszik – így a villódzó/pillanatnyi (gyakran hibás) odds kiesik.
-    min_scans = int(os.environ.get("MIN_SCANS", "2"))
+    # STABILITÁS (opcionális): hány EGYMÁST KÖVETŐ keresésben kell látszania egy
+    # tippnek a küldéshez. Alap=1 → azonnal megy (semmit nem szűrünk feleslegesen,
+    # a duplázást a notified.json dedup kezeli). 2-re állítva (MIN_SCANS=2 env) a
+    # villódzó/pillanatnyi odds kiesne, de egy gyors tippet is késleltetne.
+    min_scans = int(os.environ.get("MIN_SCANS", "1"))
     seen_counts = {}
     started = time.time()
     state = load_state()

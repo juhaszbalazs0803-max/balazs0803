@@ -48,7 +48,7 @@
     "solid": {
       "min_score": 0.8,
       "max_odds": 5.0,
-      "max_value_pct": 10.0,
+      "max_value_pct": 20.0,
       "min_age_sec": 25,
       "min_limit": 500,
       "max_hours_to_start": 24,
