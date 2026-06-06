@@ -100,6 +100,17 @@ class TelegramNotifier:
         except Exception:
             pass
 
+    def edit_text(self, chat_id, message_id, text):
+        """Üzenet szövegének átírása + gombok eltávolítása (döntés utáni nyom)."""
+        try:
+            self._call("editMessageText", {
+                "chat_id": chat_id, "message_id": message_id, "text": text,
+                "parse_mode": "HTML", "disable_web_page_preview": True,
+                "reply_markup": {"inline_keyboard": []},
+            })
+        except Exception:
+            pass
+
 
 # ---------- üzenet-szöveg ----------
 def _esc(s):
