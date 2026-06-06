@@ -88,7 +88,8 @@ class TelegramNotifier:
 
     # ---------- gomb-válaszok beolvasása ----------
     def get_updates(self, offset=None, timeout=0):
-        params = {"timeout": timeout, "allowed_updates": json.dumps(["callback_query"])}
+        params = {"timeout": timeout,
+                  "allowed_updates": json.dumps(["callback_query", "message"])}
         if offset is not None:
             params["offset"] = offset
         return self._get("getUpdates", params)
