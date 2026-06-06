@@ -1,15 +1,18 @@
 {
   "_comment": "Másold át config.json néven és töltsd ki. A value betek kereséséhez kell egy referencia-forrás (The Odds API), különben csak a vegas.hu odds-okat és a margint látod.",
-
   "vegas": {
     "integration": "vegas.hu",
     "api_base": "https://hu-sb2frontend-altenar2.biahosted.com/api/",
     "culture": "hu-HU",
     "country_code": "US",
-    "sport_ids": [66, 68, 67, 70],
+    "sport_ids": [
+      66,
+      68,
+      67,
+      70
+    ],
     "_sport_ids_comment": "66=Foci, 68=Tenisz, 67=Kosárlabda, 70=Jégkorong, 145=E-sport, 78=Darts, 77=Asztalitenisz, 69=Röplabda"
   },
-
   "reference": {
     "provider": "pinnacle",
     "_provider_comment": "'pinnacle' = Pinnacle (éles iroda) a publikus guest API-ból, kulcs NEM kell. 'oddsapi' = The Odds API (kell kulcs).",
@@ -17,13 +20,25 @@
     "_devig_method_comment": "'proportional' (egyszerű) vagy 'shin' (pontosabb favorit-longshot torzításra).",
     "oddsapi_key": "IDE_JON_A_THE_ODDS_API_KULCSOD",
     "oddsapi_regions": "eu,uk",
-    "oddsapi_sport_keys": ["soccer_epl", "basketball_nba", "icehockey_nhl"]
+    "oddsapi_sport_keys": [
+      "soccer_epl",
+      "basketball_nba",
+      "icehockey_nhl"
+    ]
   },
-
   "live": {
     "_comment": "Az élő webes felülethez (--web). Ezek a felületen is állíthatók és mentődnek.",
-    "sports": [66, 68, 67, 70],
-    "markets": ["ml", "ou", "ah"],
+    "sports": [
+      66,
+      68,
+      67,
+      70
+    ],
+    "markets": [
+      "ml",
+      "ou",
+      "ah"
+    ],
     "_markets_comment": "ml=meccsgyőztes, ou=Over/Under, ah=hendikep.",
     "bankroll": 100000,
     "_bankroll_comment": "Tőke forintban; ebből számolja a javasolt tétet (Kelly).",
@@ -44,7 +59,6 @@
     "grace_sec": 45,
     "_grace_comment": "Egy eltűnt value bet ennyi mp-ig marad látható 'LEJÁRT' jelzéssel."
   },
-
   "value": {
     "min_value_pct": 3.0,
     "_min_value_pct_comment": "Csak ennél nagyobb value%-ot mutat (pl. 3.0 = 3%).",
@@ -55,7 +69,6 @@
     "kelly_fraction": 0.25,
     "_kelly_fraction_comment": "Javasolt tét = ennyiszerese a teljes Kelly-nek (1/4 Kelly = óvatos)."
   },
-
   "notify": {
     "_comment": "Email-értesítés ÚJ biztos value tippnél. Gmailhez App jelszó kell (2FA + https://myaccount.google.com/apppasswords), NEM a normál jelszó.",
     "enabled": false,
@@ -69,16 +82,34 @@
     "arm_after_sec": 30,
     "_arm_comment": "Indítás után ennyi mp-ig csak előjegyzi a meglévő tippeket (nem küld tömeg-emailt); utána csak az ÚJ tippekről értesít."
   },
-
+  "telegram": {
+    "_comment": "Telegram-push ÚJ biztos value tippnél – azonnali, a telefonra, KIKAPCSOLT laptop mellett is (a felhős figyelő küldi). Alatta gombok: ✅ Megraktam / ❌ Kihagytam. Beállítás: @BotFather -> /newbot -> token; a chat_id-t a https://api.telegram.org/bot<TOKEN>/getUpdates oldalról olvasd ki, miután írtál a botnak.",
+    "enabled": false,
+    "_secrets_comment": "PUBLIKUS repóhoz ÜRESEK – a felhő a GitHub secretekből (TELEGRAM_TOKEN/TELEGRAM_CHAT_ID) veszi. A LOKÁLIS config.json-ba beírhatod őket a gépeden.",
+    "token": "",
+    "chat_id": ""
+  },
   "matching": {
     "max_start_diff_minutes": 90,
     "min_token_score": 0.6,
     "_comment": "Két forrás meccseit a csapatnevek hasonlósága + kezdési idő alapján párosítjuk."
   },
-
   "http": {
     "verify_ssl": true,
     "_verify_ssl_comment": "Ha SSL hibát kapsz (céges/vírusirtó proxy), állítsd false-ra.",
     "request_delay_sec": 0.3
+  },
+  "inbox": {
+    "enabled": true,
+    "poll_sec": 120,
+    "imap_host": "imap.gmail.com",
+    "imap_port": 993,
+    "since_days": 7
+  },
+  "results": {
+    "auto_settle": true,
+    "settle_poll_sec": 30,
+    "min_minutes_after_start": 90,
+    "absent_grace_sec": 180
   }
 }

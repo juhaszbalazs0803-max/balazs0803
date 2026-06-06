@@ -34,6 +34,8 @@ jobs:
           SMTP_USER: ${{ secrets.SMTP_USER }}
           SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
           TO_EMAIL: ${{ secrets.TO_EMAIL }}
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           POLL_SEC: "60"            # ~60 mp-enként néz; ez alá ne (vegas/Pinnacle terhelés)
           MAX_RUNTIME_SEC: "3300"   # 55 perc, majd átadja a következő órás futásnak
         run: python notify_watch.py

@@ -1,8 +1,14 @@
-# Email-értesítés kikapcsolt laptop mellett (felhő, ingyenes)
+# Értesítés kikapcsolt laptop mellett (felhő, ingyenes)
 
 A laptopodon futó alkalmazás csak akkor figyel, ha a gép be van kapcsolva.
-Ahhoz, hogy **kikapcsolt laptop mellett is** kapj emailt új tippről, a keresőt a
-**GitHub felhőjében** futtatjuk (GitHub Actions) — ez ingyenes.
+Ahhoz, hogy **kikapcsolt laptop mellett is** kapj értesítést új tippről, a keresőt
+a **GitHub felhőjében** futtatjuk (GitHub Actions) — ez ingyenes.
+
+Kétféle értesítést tud, és **bármelyik vagy mindkettő** mehet:
+- **💬 Telegram (ajánlott)** — azonnali push a telefonodra, a tipp alatt
+  ✅ Megraktam / ❌ Kihagytam gombokkal. Nincs app-jelszó, nincs IMAP. Lásd a
+  „Telegram" pontot lent.
+- **📧 Email** — a régi mód, SMTP/App jelszóval (lásd 1. és 3. pont).
 
 ## Két mód
 
@@ -43,12 +49,42 @@ Az órák között legfeljebb pár perc „vakablak" lehet (a futás újraindul�
 
 ## 3. Titkok (secrets) megadása
 A repóban: **Settings → Secrets and variables → Actions → New repository secret**.
-Hozz létre három titkot:
+
+**Telegramhoz** (ajánlott) két titok:
+| Név | Érték |
+|---|---|
+| `TELEGRAM_TOKEN` | a @BotFather-től kapott bot-token |
+| `TELEGRAM_CHAT_ID` | a saját chat-azonosítód |
+
+**Emailhez** (opcionális) három titok:
 | Név | Érték |
 |---|---|
 | `SMTP_USER` | a Gmail-címed (pl. `valami@gmail.com`) |
 | `SMTP_PASSWORD` | a Gmail **app jelszó** (a 16 karakter, szóközök nélkül is jó) |
 | `TO_EMAIL` | a cím, ahová az értesítést kéred (általában ugyanaz) |
+
+Elég az egyik csatorna titkait megadni; amelyikéhez nincs titok, azt a felhő
+egyszerűen kihagyja.
+
+## Telegram beállítása (egyszer, ~2 perc)
+1. A Telegramban keresd meg a **@BotFather**-t → írd: `/newbot` → adj nevet.
+   A végén kapsz egy **tokent** (pl. `8123456789:AAH...`). Ez lesz a `TELEGRAM_TOKEN`.
+2. Keresd meg a most létrehozott botodat és küldj neki egy `/start`-ot (egy üzenetet),
+   hogy írni tudjon neked.
+3. A **chat_id** lekérése: nyisd meg böngészőben (a saját tokeneddel):
+   `https://api.telegram.org/bot<TOKEN>/getUpdates` — keresd a válaszban a
+   `"chat":{"id":123456789,...}` számot. Ez a `TELEGRAM_CHAT_ID`.
+4. Lokálisan (a gépeden) a `config.json` → `telegram` blokkba is írd be a
+   `token` és `chat_id` értéket, és állítsd `"enabled": true`-ra, ha a futó
+   webes app is küldjön Telegramot. A felhőhöz a fenti két **secret** kell.
+5. Próba: az **Actions** fülön a **„Value Bet próba Telegram"** workflow →
+   *Run workflow* → kapnod kell egy üzenetet a gombokkal.
+
+> A ✅ Megraktam / ❌ Kihagytam gombnyomást a Telegram ~24 órán át megőrzi, így
+> kikapcsolt laptopnál is megmarad: amikor a laptopos app legközelebb fut,
+> beolvassa (📥 Telegram gombok gomb / automatikusan), elmenti a fogadást és
+> követi az eredményt. (A felhő publikus, ezért fogadási adatot oda nem írunk –
+> a beolvasás/lezárás a gépeden történik, mint az emailes válaszoknál.)
 
 ## 4. Indítás / ellenőrzés (gyors mód)
 - A repó **Actions** fülén látod a **„Value Bet figyelő (gyors)"** workflow-t.

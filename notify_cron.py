@@ -15,6 +15,7 @@ from valuebet.http import Http
 from valuebet.vegas import VegasClient, SPORT_NAMES
 from valuebet.pinnacle import PinnacleClient, SPORT_MAP
 from valuebet.notify import EmailNotifier
+from valuebet.telegram import TelegramNotifier, format_tip, BUTTONS
 from valuebet import matching, compute, bettoken
 from valuebet import value as V
 
@@ -112,6 +113,39 @@ def format_bet_html(cfg, v, b):
     </div>"""
 
 
+def inject_env(cfg):
+    """SMTP és Telegram belépési adatok a környezeti változókból (GitHub secrets)."""
+    n = cfg.setdefault("notify", {})
+    n["smtp_user"] = os.environ.get("SMTP_USER", n.get("smtp_user", ""))
+    n["smtp_password"] = os.environ.get("SMTP_PASSWORD", n.get("smtp_password", ""))
+    n["to_email"] = os.environ.get("TO_EMAIL", n.get("to_email") or n["smtp_user"])
+    t = cfg.setdefault("telegram", {})
+    t["token"] = os.environ.get("TELEGRAM_TOKEN", t.get("token", ""))
+    t["chat_id"] = os.environ.get("TELEGRAM_CHAT_ID", t.get("chat_id", ""))
+    return cfg
+
+
+def send_telegram(notifier, cfg, items):
+    """Tippenként egy Telegram-üzenet, ✅ Megraktam / ❌ Kihagytam gombokkal.
+
+    Ha egyetlen üzenet sem ment ki (mind hibázott), hibát dob, hogy a hívó
+    újrapróbálhassa (ne jelölje a tippeket 'ismertnek' küldés nélkül)."""
+    sent = 0
+    last_err = None
+    for v, b in items:
+        d = bet_dict(cfg, v, b)
+        token = bettoken.token_block(d)
+        try:
+            notifier.send(format_tip(d, token), BUTTONS)
+            sent += 1
+        except Exception as e:
+            last_err = e
+            print(f"[telegram] HIBA: {e}")
+    if items and sent == 0:
+        raise RuntimeError(f"Telegram küldés sikertelen: {last_err}")
+    return sent
+
+
 def build_email(cfg, items, intro):
     """(text, html) páros a tippekből. items: (v, b) lista."""
     text = [intro] + [format_bet(cfg, v, b) for v, b in items]
@@ -179,14 +213,12 @@ def main():
     path = "config.json" if os.path.exists("config.json") else "config.example.json"
     with open(path, encoding="utf-8") as f:
         cfg = json.load(f)
-    n = cfg.setdefault("notify", {})
-    n["smtp_user"] = os.environ.get("SMTP_USER", n.get("smtp_user", ""))
-    n["smtp_password"] = os.environ.get("SMTP_PASSWORD", n.get("smtp_password", ""))
-    n["to_email"] = os.environ.get("TO_EMAIL", n.get("to_email") or n["smtp_user"])
+    inject_env(cfg)
 
-    notifier = EmailNotifier(cfg)
-    if not notifier.configured():
-        print("HIBA: nincs SMTP beállítva (SMTP_USER / SMTP_PASSWORD / TO_EMAIL).")
+    email = EmailNotifier(cfg)
+    tg = TelegramNotifier(cfg)
+    if not (email.configured() or tg.configured()):
+        print("HIBA: sem email (SMTP_*), sem Telegram (TELEGRAM_*) nincs beállítva.")
         return
 
     found, now = scan(cfg)
@@ -212,10 +244,17 @@ def main():
 
     new.sort(key=lambda x: -x[2]["value_pct"])
     items = [(v, b) for _, v, b in new]
-    text, html = build_email(cfg, items, f"{len(new)} új biztos value tipp a vegas.hu-n:")
-    notifier.send(f"🟢 {len(new)} új value tipp – legjobb +{new[0][2]['value_pct']}%",
-                  text, html)
-    print(f"Elküldve: {len(new)} új tipp.")
+    if tg.configured():
+        try:
+            n_tg = send_telegram(tg, cfg, items)
+            print(f"Telegram: {n_tg} tipp elküldve.")
+        except Exception as e:
+            print(f"Telegram küldés hiba: {e}")
+    if email.configured():
+        text, html = build_email(cfg, items, f"{len(new)} új biztos value tipp a vegas.hu-n:")
+        email.send(f"🟢 {len(new)} új value tipp – legjobb +{new[0][2]['value_pct']}%",
+                   text, html)
+        print(f"Email: {len(new)} új tipp elküldve.")
 
 
 if __name__ == "__main__":

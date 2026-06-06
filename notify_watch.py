@@ -25,6 +25,7 @@ import traceback
 from datetime import datetime
 
 from valuebet.notify import EmailNotifier
+from valuebet.telegram import TelegramNotifier
 import notify_cron
 
 STATE_FILE = notify_cron.STATE_FILE
@@ -35,11 +36,7 @@ def load_config():
     path = "config.json" if os.path.exists("config.json") else "config.example.json"
     with open(path, encoding="utf-8") as f:
         cfg = json.load(f)
-    n = cfg.setdefault("notify", {})
-    n["smtp_user"] = os.environ.get("SMTP_USER", n.get("smtp_user", ""))
-    n["smtp_password"] = os.environ.get("SMTP_PASSWORD", n.get("smtp_password", ""))
-    n["to_email"] = os.environ.get("TO_EMAIL", n.get("to_email") or n["smtp_user"])
-    return cfg
+    return notify_cron.inject_env(cfg)
 
 
 def load_state():
@@ -57,20 +54,25 @@ def save_state(state):
         json.dump(state, f)
 
 
-def send_email(new, notifier, cfg):
+def send_alerts(new, email, tg, cfg):
+    """Email és/vagy Telegram az ÚJ tippekről. Hibát feldob (a hívó kezeli)."""
     new.sort(key=lambda x: -x[2]["value_pct"])
     items = [(v, b) for _, v, b in new]
-    text, html = notify_cron.build_email(
-        cfg, items, f"{len(new)} új biztos value tipp a vegas.hu-n:")
-    notifier.send(f"🟢 {len(new)} új value tipp – legjobb +{new[0][2]['value_pct']}%",
-                  text, html)
+    if tg.configured():
+        notify_cron.send_telegram(tg, cfg, items)
+    if email.configured():
+        text, html = notify_cron.build_email(
+            cfg, items, f"{len(new)} új biztos value tipp a vegas.hu-n:")
+        email.send(f"🟢 {len(new)} új value tipp – legjobb +{new[0][2]['value_pct']}%",
+                   text, html)
 
 
 def main():
     cfg = load_config()
-    notifier = EmailNotifier(cfg)
-    if not notifier.configured():
-        print("HIBA: nincs SMTP beállítva (SMTP_USER / SMTP_PASSWORD / TO_EMAIL).")
+    email = EmailNotifier(cfg)
+    tg = TelegramNotifier(cfg)
+    if not (email.configured() or tg.configured()):
+        print("HIBA: sem email (SMTP_*), sem Telegram (TELEGRAM_*) nincs beállítva.")
         return
 
     poll = int(os.environ.get("POLL_SEC", "90"))
@@ -90,12 +92,12 @@ def main():
             sent_ok = True
             if new:
                 try:
-                    send_email(new, notifier, cfg)
+                    send_alerts(new, email, tg, cfg)
                     print(f"[{datetime.now():%H:%M:%S}] Elküldve {len(new)} ÚJ tipp "
                           f"(összes biztos: {len(found)}).")
                 except Exception as e:
                     sent_ok = False
-                    print(f"[{datetime.now():%H:%M:%S}] [email] HIBA: {e} "
+                    print(f"[{datetime.now():%H:%M:%S}] [értesítés] HIBA: {e} "
                           f"(újrapróbálom a következő körben)")
             else:
                 print(f"[{datetime.now():%H:%M:%S}] Nincs új tipp "
