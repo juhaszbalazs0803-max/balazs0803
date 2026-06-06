@@ -33,7 +33,8 @@ class TelegramNotifier:
 
     def configured(self):
         return bool(self.token and self.chat_id
-                    and "IDE_JON" not in self.token)
+                    and "IDE_JON" not in self.token
+                    and "IDE_JON" not in self.chat_id)
 
     def _ctx(self):
         if self.verify:
