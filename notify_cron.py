@@ -250,11 +250,14 @@ def main():
             print(f"Telegram: {n_tg} tipp elküldve.")
         except Exception as e:
             print(f"Telegram küldés hiba: {e}")
-    if email.configured():
-        text, html = build_email(cfg, items, f"{len(new)} új biztos value tipp a vegas.hu-n:")
-        email.send(f"🟢 {len(new)} új value tipp – legjobb +{new[0][2]['value_pct']}%",
-                   text, html)
-        print(f"Email: {len(new)} új tipp elküldve.")
+    if cfg.get("notify", {}).get("enabled") and email.configured():
+        try:
+            text, html = build_email(cfg, items, f"{len(new)} új biztos value tipp a vegas.hu-n:")
+            email.send(f"🟢 {len(new)} új value tipp – legjobb +{new[0][2]['value_pct']}%",
+                       text, html)
+            print(f"Email: {len(new)} új tipp elküldve.")
+        except Exception as e:
+            print(f"Email küldés hiba: {e}")
 
 
 if __name__ == "__main__":

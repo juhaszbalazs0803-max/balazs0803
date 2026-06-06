@@ -48,7 +48,7 @@
     "solid": {
       "min_score": 0.8,
       "max_odds": 5.0,
-      "max_value_pct": 20.0,
+      "max_value_pct": 10.0,
       "min_age_sec": 25,
       "min_limit": 500,
       "max_hours_to_start": 24,
@@ -84,7 +84,7 @@
   },
   "telegram": {
     "_comment": "Telegram-push ÚJ biztos value tippnél – azonnali, a telefonra, KIKAPCSOLT laptop mellett is (a felhős figyelő küldi). Alatta gombok: ✅ Megraktam / ❌ Kihagytam. Beállítás: @BotFather -> /newbot -> token; a chat_id-t a https://api.telegram.org/bot<TOKEN>/getUpdates oldalról olvasd ki, miután írtál a botnak.",
-    "enabled": false,
+    "enabled": true,
     "_secrets_comment": "PUBLIKUS repóhoz ÜRESEK – a felhő a GitHub secretekből (TELEGRAM_TOKEN/TELEGRAM_CHAT_ID) veszi. A LOKÁLIS config.json-ba beírhatod őket a gépeden.",
     "token": "",
     "chat_id": ""
