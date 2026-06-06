@@ -9,6 +9,7 @@ nem kerülnek a kódba:  SMTP_USER, SMTP_PASSWORD, TO_EMAIL
 """
 import json
 import os
+import re
 from datetime import datetime, timezone
 
 from valuebet.http import Http
@@ -25,6 +26,26 @@ KEEP_SEC = 2 * 86400  # 2 napnál régebbi értesítéseket elfelejtünk
 
 def _round_stake(x, step=100):
     return int(round(x / step) * step)
+
+
+def _norm(s):
+    """Név-normalizálás a deduphoz: csak betűk/számok, kisbetűsen."""
+    return re.sub(r"[^a-z0-9]", "", (s or "").lower())
+
+
+def dedup_key(v, b):
+    """TARTALOM-alapú 'már elküldtem?' kulcs – NEM a változó vegas event-id.
+
+    A csapatnevekből + piacból/tippből (subkey) + a kezdés NAPJÁBÓL áll, így ha
+    a meccs eltűnik a feedből majd visszajön (akár ÚJ event-id-vel), ugyanaz a
+    kulcs jön ki → nem küldjük ki még egyszer ugyanazt a tippet."""
+    day = ""
+    if getattr(v, "start", None):
+        try:
+            day = v.start.strftime("%Y%m%d")
+        except Exception:
+            day = ""
+    return f"{_norm(getattr(v, 'home', ''))}|{_norm(getattr(v, 'away', ''))}|{b['subkey']}|{day}"
 
 
 def stake_for(cfg, fair_p, odds):
@@ -204,7 +225,7 @@ def scan(cfg):
                     hrs = (v.start.timestamp() - now) / 3600.0
                     if hrs < 0 or hrs > mh:
                         continue
-                found.append((f"{sid}:{v.id}:{b['subkey']}", v, b))
+                found.append((dedup_key(v, b), v, b))
     return found, now
 
 
