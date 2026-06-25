@@ -24,6 +24,16 @@ STATE_FILE = "notified.json"
 KEEP_SEC = 2 * 86400  # 2 napnál régebbi értesítéseket elfelejtünk
 
 
+def tip_push_enabled():
+    """A felhős PER-TIPP értesítés alapból KI van kapcsolva.
+
+    A koncepció megváltozott: a lokális app automatikusan 'megrakja' (papíron) a
+    biztos value tippeket és napi EGY jelentést küld a statisztikáról – nem kell
+    per-tipp spam. A felhős azonnali küldést a TIP_PUSH=1 környezeti változóval
+    lehet visszakapcsolni (GitHub Actions env / workflow)."""
+    return os.environ.get("TIP_PUSH", "0").strip().lower() in ("1", "true", "yes", "on")
+
+
 def _round_stake(x, step=100):
     return int(round(x / step) * step)
 
@@ -265,6 +275,9 @@ def main():
 
     new.sort(key=lambda x: -x[2]["value_pct"])
     items = [(v, b) for _, v, b in new]
+    if not tip_push_enabled():
+        print(f"Per-tipp értesítés KI (TIP_PUSH!=1); {len(new)} új tipp nem lett kiküldve.")
+        return
     if tg.configured():
         try:
             n_tg = send_telegram(tg, cfg, items)

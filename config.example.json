@@ -43,6 +43,8 @@
     "bankroll": 100000,
     "_bankroll_comment": "Tőke forintban; ebből számolja a javasolt tétet (Kelly).",
     "min_bet": 100,
+    "max_stake_pct": 5,
+    "_max_stake_pct_comment": "Max tét egy fogadásra a tőke %-ában (0=nincs sapka).",
     "only_solid": true,
     "_only_solid_comment": "Csak a 'biztos' value betek (erős párosítás + józan odds/value sáv). A felületen kikapcsolható.",
     "solid": {
@@ -110,6 +112,25 @@
     "auto_settle": true,
     "settle_poll_sec": 30,
     "min_minutes_after_start": 90,
-    "absent_grace_sec": 180
+    "absent_grace_sec": 180,
+    "retroactive": true,
+    "_retroactive_comment": "Visszamenőleges végeredmény a TheSportsDB-ből (foci/kosár/jégkorong ÉS tenisz a strResult-ból).",
+    "sportsdb_key": "3",
+    "sportsdb_min_score": 0.6,
+    "tennisexplorer": true,
+    "te_min_score": 0.5,
+    "auto_void": true,
+    "auto_void_after_days": 3,
+    "_auto_void_comment": "Amit ennyi nap után sehol nem talált meg, automatikusan 'semmis' (void) -> nincs kézi lezárás."
+  },
+  "paper": {
+    "_comment": "AUTO PAPÍR-FOGADÁS (lokális app): a szoftver per-tipp értesítés helyett automatikusan 'megrakja' a biztos value tippeket és statisztikát vezet. Valódi fogadás NEM történik.",
+    "enabled": true,
+    "max_odds": 2.0
+  },
+  "report": {
+    "_comment": "Napi EGY Telegram-jelentés a statisztikáról. A LOKÁLIS appból megy (a felhő nem küldi, mert a statisztika lokális).",
+    "enabled": true,
+    "hour": 9
   }
 }

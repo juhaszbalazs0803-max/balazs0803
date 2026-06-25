@@ -62,6 +62,10 @@ def send_alerts(new, email, tg, cfg):
     EGYIK csatorna sem ért célba. Így egy email-hiba nem okoz Telegram-újraküldést."""
     new.sort(key=lambda x: -x[2]["value_pct"])
     items = [(v, b) for _, v, b in new]
+    # Per-tipp értesítés alapból KI – a lokális app papíron rakja meg a tippeket
+    # és napi jelentést küld. TIP_PUSH=1-gyel kapcsolható vissza a felhős küldés.
+    if not notify_cron.tip_push_enabled():
+        return
     delivered = False
     if tg.configured():
         try:
